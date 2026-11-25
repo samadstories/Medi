@@ -1,0 +1,6 @@
+{
+  "name": "MediGuide",
+  "description": "Multilingual medicine information, safety guide, reminders, and verified price comparison app in English, Hindi, and Bengali.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

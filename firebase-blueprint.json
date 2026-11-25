@@ -1,0 +1,309 @@
+{
+  "entities": {
+    "LocalizedText": {
+      "title": "LocalizedText",
+      "description": "Multilingual text map supporting English, Hindi, and Bengali.",
+      "type": "object",
+      "properties": {
+        "en": { "type": "string" },
+        "hi": { "type": "string" },
+        "bn": { "type": "string" }
+      },
+      "required": ["en", "hi", "bn"]
+    },
+    "MedicineMonograph": {
+      "title": "MedicineMonograph",
+      "description": "Multilingual clinical monograph sections for a medicine.",
+      "type": "object",
+      "properties": {
+        "usedFor": { "$ref": "#/entities/LocalizedText" },
+        "usesAndBenefits": { "$ref": "#/entities/LocalizedText" },
+        "howItWorks": { "$ref": "#/entities/LocalizedText" },
+        "commonSideEffects": { "$ref": "#/entities/LocalizedText" },
+        "seriousSideEffects": { "$ref": "#/entities/LocalizedText" },
+        "warnings": { "$ref": "#/entities/LocalizedText" },
+        "drugInteractions": { "$ref": "#/entities/LocalizedText" },
+        "contraindications": { "$ref": "#/entities/LocalizedText" },
+        "pregnancyWarnings": { "$ref": "#/entities/LocalizedText" },
+        "storageInstructions": { "$ref": "#/entities/LocalizedText" }
+      },
+      "required": [
+        "usedFor", "usesAndBenefits", "howItWorks", "commonSideEffects",
+        "seriousSideEffects", "warnings", "drugInteractions",
+        "contraindications", "pregnancyWarnings", "storageInstructions"
+      ]
+    },
+    "Medicine": {
+      "title": "Medicine",
+      "description": "Verified multilingual medicine monograph with safety, side effects, and official source attribution.",
+      "type": "object",
+      "properties": {
+        "name": { "$ref": "#/entities/LocalizedText" },
+        "brandName": { "type": "string" },
+        "genericName": { "$ref": "#/entities/LocalizedText" },
+        "saltComposition": { "type": "string" },
+        "categoryId": { "type": "string" },
+        "manufacturerId": { "type": "string" },
+        "manufacturerDetails": { "$ref": "#/entities/LocalizedText" },
+        "imageUrl": { "type": "string" },
+        "monograph": { "$ref": "#/entities/MedicineMonograph" },
+        "prescriptionRequired": { "type": "boolean" },
+        "officialSources": { "type": "string" },
+        "lastVerifiedDate": { "type": "string" },
+        "openFdaGenericQuery": { "type": "string" },
+        "popularScore": { "type": "integer" },
+        "published": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp via FieldValue.serverTimestamp()" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp via FieldValue.serverTimestamp()" }
+      },
+      "required": [
+        "name", "brandName", "genericName", "saltComposition", "categoryId",
+        "manufacturerId", "manufacturerDetails", "monograph",
+        "prescriptionRequired", "officialSources",
+        "lastVerifiedDate", "popularScore", "published", "createdAt", "updatedAt"
+      ]
+    },
+    "PriceOffer": {
+      "title": "PriceOffer",
+      "description": "Verified medicine pricing record for side-by-side generic vs branded comparison.",
+      "type": "object",
+      "properties": {
+        "medicineId": { "type": "string" },
+        "saltComposition": { "type": "string" },
+        "brandName": { "type": "string" },
+        "genericName": { "type": "string" },
+        "genericOption": { "type": "boolean" },
+        "packSize": { "type": "string" },
+        "unitCount": { "type": "integer" },
+        "mrpInr": { "type": "number" },
+        "sellingPriceInr": { "type": "number" },
+        "pricePerUnitInr": { "type": "number" },
+        "discountPercent": { "type": "integer" },
+        "manufacturerName": { "type": "string" },
+        "availability": { "type": "string", "enum": ["IN_STOCK", "LIMITED", "OUT_OF_STOCK"] },
+        "sourceName": { "type": "string" },
+        "lastUpdatedDate": { "type": "string" },
+        "published": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "medicineId", "saltComposition", "brandName", "genericName",
+        "genericOption", "packSize", "unitCount", "mrpInr", "sellingPriceInr",
+        "pricePerUnitInr", "discountPercent", "manufacturerName", "availability",
+        "sourceName", "lastUpdatedDate", "published", "createdAt", "updatedAt"
+      ]
+    },
+    "Category": {
+      "title": "Category",
+      "description": "Therapeutic medicine category with English, Hindi, and Bengali titles.",
+      "type": "object",
+      "properties": {
+        "nameEn": { "type": "string" },
+        "nameHi": { "type": "string" },
+        "nameBn": { "type": "string" },
+        "iconKey": { "type": "string" },
+        "sortOrder": { "type": "integer" },
+        "published": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["nameEn", "nameHi", "nameBn", "iconKey", "sortOrder", "published", "createdAt", "updatedAt"]
+    },
+    "Manufacturer": {
+      "title": "Manufacturer",
+      "description": "Verified pharmaceutical manufacturer entry.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "country": { "type": "string" },
+        "licenseInfo": { "type": "string" },
+        "published": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "country", "published", "createdAt", "updatedAt"]
+    },
+    "TranslationOverride": {
+      "title": "TranslationOverride",
+      "description": "Admin-managed multilingual translation entry.",
+      "type": "object",
+      "properties": {
+        "key": { "type": "string" },
+        "en": { "type": "string" },
+        "hi": { "type": "string" },
+        "bn": { "type": "string" },
+        "published": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["key", "en", "hi", "bn", "published", "createdAt", "updatedAt"]
+    },
+    "ApiConnection": {
+      "title": "ApiConnection",
+      "description": "External verified medicine/pricing API endpoint managed by admins.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "baseUrl": { "type": "string" },
+        "providerType": { "type": "string" },
+        "active": { "type": "boolean" },
+        "statusMessage": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "baseUrl", "providerType", "active", "createdAt", "updatedAt"]
+    },
+    "AdminRecord": {
+      "title": "AdminRecord",
+      "description": "Authorized admin UID registry.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "role": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "role", "createdAt"]
+    },
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Authenticated user preferences and profile.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "displayName": { "type": "string" },
+        "email": { "type": "string" },
+        "preferredLanguage": { "type": "string", "enum": ["en", "hi", "bn"] },
+        "themeMode": { "type": "string", "enum": ["SYSTEM", "LIGHT", "DARK"] },
+        "onboardingCompleted": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "displayName", "preferredLanguage", "themeMode", "onboardingCompleted", "createdAt", "updatedAt"]
+    },
+    "FavoriteMedicine": {
+      "title": "FavoriteMedicine",
+      "description": "User's saved favorite medicine reference.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "medicineId": { "type": "string" },
+        "medicineName": { "type": "string" },
+        "genericName": { "type": "string" },
+        "categoryId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "medicineId", "medicineName", "genericName", "categoryId", "createdAt"]
+    },
+    "RecentlyViewed": {
+      "title": "RecentlyViewed",
+      "description": "User's recently viewed medicine entry.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "medicineId": { "type": "string" },
+        "medicineName": { "type": "string" },
+        "viewedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "medicineId", "medicineName", "viewedAt"]
+    },
+    "SearchHistoryEntry": {
+      "title": "SearchHistoryEntry",
+      "description": "User's search history item.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "query": { "type": "string" },
+        "searchType": { "type": "string" },
+        "searchedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "query", "searchType", "searchedAt"]
+    },
+    "MedicineReminder": {
+      "title": "MedicineReminder",
+      "description": "User's medicine dosage schedule reminder.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "medicineId": { "type": "string" },
+        "medicineName": { "type": "string" },
+        "dosage": { "type": "string" },
+        "scheduleSlot": { "type": "string", "enum": ["MORNING", "AFTERNOON", "EVENING", "NIGHT", "CUSTOM"] },
+        "timeHour": { "type": "integer" },
+        "timeMinute": { "type": "integer" },
+        "instructions": { "type": "string" },
+        "active": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "medicineId", "medicineName", "dosage", "scheduleSlot", "timeHour", "timeMinute", "active", "createdAt", "updatedAt"]
+    },
+    "AnalyticsEvent": {
+      "title": "AnalyticsEvent",
+      "description": "App usage telemetry event readable only by admins.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "eventType": { "type": "string", "enum": ["VIEW", "SEARCH", "COMPARE", "SCAN", "VOICE"] },
+        "targetId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "eventType", "targetId", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/medicines/{medicineId}": {
+      "schema": { "$ref": "#/entities/Medicine" },
+      "description": "Published verified medicines catalog (authenticated read, admin write)."
+    },
+    "/priceOffers/{offerId}": {
+      "schema": { "$ref": "#/entities/PriceOffer" },
+      "description": "Verified medicine price comparison entries (authenticated read, admin write)."
+    },
+    "/categories/{categoryId}": {
+      "schema": { "$ref": "#/entities/Category" },
+      "description": "Medicine categories in EN/HI/BN (authenticated read, admin write)."
+    },
+    "/manufacturers/{manufacturerId}": {
+      "schema": { "$ref": "#/entities/Manufacturer" },
+      "description": "Pharmaceutical manufacturers (authenticated read, admin write)."
+    },
+    "/translations/{translationId}": {
+      "schema": { "$ref": "#/entities/TranslationOverride" },
+      "description": "Admin-managed multilingual translation overrides."
+    },
+    "/apiConnections/{connectionId}": {
+      "schema": { "$ref": "#/entities/ApiConnection" },
+      "description": "Admin-only API connection registry."
+    },
+    "/admins/{adminUid}": {
+      "schema": { "$ref": "#/entities/AdminRecord" },
+      "description": "Admin privilege records."
+    },
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Per-user profile and language/theme settings."
+    },
+    "/users/{userId}/favorites/{medicineId}": {
+      "schema": { "$ref": "#/entities/FavoriteMedicine" },
+      "description": "User's saved favorite medicines."
+    },
+    "/users/{userId}/recentlyViewed/{medicineId}": {
+      "schema": { "$ref": "#/entities/RecentlyViewed" },
+      "description": "User's recently viewed medicines."
+    },
+    "/users/{userId}/searchHistory/{historyId}": {
+      "schema": { "$ref": "#/entities/SearchHistoryEntry" },
+      "description": "User's search history."
+    },
+    "/users/{userId}/reminders/{reminderId}": {
+      "schema": { "$ref": "#/entities/MedicineReminder" },
+      "description": "User's dosage schedule reminders."
+    },
+    "/analyticsEvents/{eventId}": {
+      "schema": { "$ref": "#/entities/AnalyticsEvent" },
+      "description": "Telemetry events written by authenticated users and read only by admins."
+    }
+  }
+}

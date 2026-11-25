@@ -1,0 +1,402 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 1. Global Default-Deny Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // 2. Global Helpers
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
+        ('email_verified' in request.auth.token &&
+         request.auth.token.email_verified == true &&
+         'email' in request.auth.token &&
+         request.auth.token.email == 'Samadconnecting@gmail.com')
+      );
+    }
+
+    function isNonEmptyString(val, maxLen) {
+      return val is string && val.size() >= 1 && val.size() <= maxLen;
+    }
+
+    function isLocalizedText(val, maxLen) {
+      return val is map &&
+             val.size() == 3 &&
+             val.en is string && val.en.size() <= maxLen &&
+             val.hi is string && val.bn is string;
+    }
+
+    function isValidMonograph(m) {
+      return m is map &&
+             m.size() == 10 &&
+             isLocalizedText(m.usedFor, 1000) &&
+             isLocalizedText(m.usesAndBenefits, 2000) &&
+             isLocalizedText(m.howItWorks, 2000) &&
+             isLocalizedText(m.commonSideEffects, 2000) &&
+             isLocalizedText(m.seriousSideEffects, 2000) &&
+             isLocalizedText(m.warnings, 2000) &&
+             isLocalizedText(m.drugInteractions, 2000) &&
+             isLocalizedText(m.contraindications, 2000) &&
+             isLocalizedText(m.pregnancyWarnings, 2000) &&
+             isLocalizedText(m.storageInstructions, 1000);
+    }
+
+    // 3. Entity Validators
+    function isValidMedicine(data) {
+      return isLocalizedText(data.name, 200) &&
+             isNonEmptyString(data.brandName, 200) &&
+             isLocalizedText(data.genericName, 200) &&
+             isNonEmptyString(data.saltComposition, 300) &&
+             isNonEmptyString(data.categoryId, 100) &&
+             isNonEmptyString(data.manufacturerId, 100) &&
+             isLocalizedText(data.manufacturerDetails, 400) &&
+             (!('imageUrl' in data) || (data.imageUrl is string && data.imageUrl.size() <= 1000)) &&
+             isValidMonograph(data.monograph) &&
+             data.prescriptionRequired is bool &&
+             isNonEmptyString(data.officialSources, 500) &&
+             isNonEmptyString(data.lastVerifiedDate, 40) &&
+             (!('openFdaGenericQuery' in data) || (data.openFdaGenericQuery is string && data.openFdaGenericQuery.size() <= 200)) &&
+             data.popularScore is int && data.popularScore >= 0 && data.popularScore <= 1000000 &&
+             data.published is bool &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidPriceOffer(data) {
+      return isNonEmptyString(data.medicineId, 128) &&
+             isNonEmptyString(data.saltComposition, 300) &&
+             isNonEmptyString(data.brandName, 200) &&
+             isNonEmptyString(data.genericName, 200) &&
+             data.genericOption is bool &&
+             isNonEmptyString(data.packSize, 100) &&
+             data.unitCount is int && data.unitCount >= 1 && data.unitCount <= 10000 &&
+             data.mrpInr is number && data.mrpInr >= 0 && data.mrpInr <= 1000000 &&
+             data.sellingPriceInr is number && data.sellingPriceInr >= 0 && data.sellingPriceInr <= 1000000 &&
+             data.pricePerUnitInr is number && data.pricePerUnitInr >= 0 && data.pricePerUnitInr <= 1000000 &&
+             data.discountPercent is int && data.discountPercent >= 0 && data.discountPercent <= 100 &&
+             isNonEmptyString(data.manufacturerName, 200) &&
+             data.availability in ['IN_STOCK', 'LIMITED', 'OUT_OF_STOCK'] &&
+             isNonEmptyString(data.sourceName, 300) &&
+             isNonEmptyString(data.lastUpdatedDate, 40) &&
+             data.published is bool &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidCategory(data) {
+      return isNonEmptyString(data.nameEn, 120) &&
+             isNonEmptyString(data.nameHi, 120) &&
+             isNonEmptyString(data.nameBn, 120) &&
+             isNonEmptyString(data.iconKey, 60) &&
+             data.sortOrder is int && data.sortOrder >= 0 && data.sortOrder <= 1000 &&
+             data.published is bool &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidManufacturer(data) {
+      return isNonEmptyString(data.name, 200) &&
+             isNonEmptyString(data.country, 100) &&
+             (!('licenseInfo' in data) || (data.licenseInfo is string && data.licenseInfo.size() <= 300)) &&
+             data.published is bool &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidTranslation(data) {
+      return isNonEmptyString(data.key, 120) &&
+             isNonEmptyString(data.en, 1000) &&
+             isNonEmptyString(data.hi, 1000) &&
+             isNonEmptyString(data.bn, 1000) &&
+             data.published is bool &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidApiConnection(data) {
+      return isNonEmptyString(data.name, 150) &&
+             isNonEmptyString(data.baseUrl, 500) &&
+             isNonEmptyString(data.providerType, 80) &&
+             data.active is bool &&
+             (!('statusMessage' in data) || (data.statusMessage is string && data.statusMessage.size() <= 300)) &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidUserProfile(data) {
+      return isNonEmptyString(data.userId, 128) &&
+             isNonEmptyString(data.displayName, 120) &&
+             (!('email' in data) || (data.email is string && data.email.size() <= 200)) &&
+             data.preferredLanguage in ['en', 'hi', 'bn'] &&
+             data.themeMode in ['SYSTEM', 'LIGHT', 'DARK'] &&
+             data.onboardingCompleted is bool &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidFavorite(data) {
+      return isNonEmptyString(data.userId, 128) &&
+             isNonEmptyString(data.medicineId, 128) &&
+             isNonEmptyString(data.medicineName, 200) &&
+             isNonEmptyString(data.genericName, 200) &&
+             isNonEmptyString(data.categoryId, 100) &&
+             data.createdAt is timestamp && data.createdAt <= request.time;
+    }
+
+    function isValidRecentlyViewed(data) {
+      return isNonEmptyString(data.userId, 128) &&
+             isNonEmptyString(data.medicineId, 128) &&
+             isNonEmptyString(data.medicineName, 200) &&
+             data.viewedAt is timestamp && data.viewedAt <= request.time;
+    }
+
+    function isValidSearchHistory(data) {
+      return isNonEmptyString(data.userId, 128) &&
+             isNonEmptyString(data.query, 200) &&
+             isNonEmptyString(data.searchType, 50) &&
+             data.searchedAt is timestamp && data.searchedAt <= request.time;
+    }
+
+    function isValidReminder(data) {
+      return isNonEmptyString(data.userId, 128) &&
+             isNonEmptyString(data.medicineId, 128) &&
+             isNonEmptyString(data.medicineName, 200) &&
+             isNonEmptyString(data.dosage, 100) &&
+             data.scheduleSlot in ['MORNING', 'AFTERNOON', 'EVENING', 'NIGHT', 'CUSTOM'] &&
+             data.timeHour is int && data.timeHour >= 0 && data.timeHour <= 23 &&
+             data.timeMinute is int && data.timeMinute >= 0 && data.timeMinute <= 59 &&
+             (!('instructions' in data) || (data.instructions is string && data.instructions.size() <= 300)) &&
+             data.active is bool &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidAnalyticsEvent(data) {
+      return isNonEmptyString(data.userId, 128) &&
+             data.eventType in ['VIEW', 'SEARCH', 'COMPARE', 'SCAN', 'VOICE'] &&
+             data.targetId is string && data.targetId.size() <= 128 &&
+             data.createdAt is timestamp && data.createdAt <= request.time;
+    }
+
+    // 4. Shared Verified Catalog Collections (Authenticated Read on published, Admin Write)
+    match /medicines/{medicineId} {
+      allow get: if isSignedIn() && isValidId(medicineId) && (existing().published == true || isAdmin());
+      allow list: if isSignedIn() && (existing().published == true || isAdmin());
+      allow create: if isAdmin() && isValidId(medicineId) &&
+                       incoming().keys().hasOnly([
+                         'name', 'brandName', 'genericName', 'saltComposition',
+                         'categoryId', 'manufacturerId', 'manufacturerDetails', 'imageUrl',
+                         'monograph', 'prescriptionRequired', 'officialSources',
+                         'lastVerifiedDate', 'openFdaGenericQuery', 'popularScore', 'published',
+                         'createdAt', 'updatedAt'
+                       ]) &&
+                       isValidMedicine(incoming());
+      allow update: if isAdmin() && isValidId(medicineId) &&
+                       incoming().createdAt == existing().createdAt &&
+                       isValidMedicine(incoming()) &&
+                       incoming().diff(existing()).affectedKeys().hasOnly([
+                         'name', 'brandName', 'genericName', 'saltComposition',
+                         'categoryId', 'manufacturerId', 'manufacturerDetails', 'imageUrl',
+                         'monograph', 'prescriptionRequired', 'officialSources',
+                         'lastVerifiedDate', 'openFdaGenericQuery', 'popularScore', 'published',
+                         'updatedAt'
+                       ]);
+      allow delete: if isAdmin() && isValidId(medicineId);
+    }
+
+    match /priceOffers/{offerId} {
+      allow get: if isSignedIn() && isValidId(offerId) && (existing().published == true || isAdmin());
+      allow list: if isSignedIn() && (existing().published == true || isAdmin());
+      allow create: if isAdmin() && isValidId(offerId) &&
+                       incoming().keys().hasAll([
+                         'medicineId', 'saltComposition', 'brandName', 'genericName',
+                         'genericOption', 'packSize', 'unitCount', 'mrpInr', 'sellingPriceInr',
+                         'pricePerUnitInr', 'discountPercent', 'manufacturerName', 'availability',
+                         'sourceName', 'lastUpdatedDate', 'published', 'createdAt', 'updatedAt'
+                       ]) &&
+                       incoming().keys().hasOnly([
+                         'medicineId', 'saltComposition', 'brandName', 'genericName',
+                         'genericOption', 'packSize', 'unitCount', 'mrpInr', 'sellingPriceInr',
+                         'pricePerUnitInr', 'discountPercent', 'manufacturerName', 'availability',
+                         'sourceName', 'lastUpdatedDate', 'published', 'createdAt', 'updatedAt'
+                       ]) &&
+                       isValidPriceOffer(incoming());
+      allow update: if isAdmin() && isValidId(offerId) &&
+                       incoming().createdAt == existing().createdAt &&
+                       isValidPriceOffer(incoming()) &&
+                       incoming().diff(existing()).affectedKeys().hasOnly([
+                         'medicineId', 'saltComposition', 'brandName', 'genericName',
+                         'genericOption', 'packSize', 'unitCount', 'mrpInr', 'sellingPriceInr',
+                         'pricePerUnitInr', 'discountPercent', 'manufacturerName', 'availability',
+                         'sourceName', 'lastUpdatedDate', 'published', 'updatedAt'
+                       ]);
+      allow delete: if isAdmin() && isValidId(offerId);
+    }
+
+    match /categories/{categoryId} {
+      allow get: if isSignedIn() && isValidId(categoryId) && (existing().published == true || isAdmin());
+      allow list: if isSignedIn() && (existing().published == true || isAdmin());
+      allow create: if isAdmin() && isValidId(categoryId) &&
+                       incoming().keys().hasAll(['nameEn', 'nameHi', 'nameBn', 'iconKey', 'sortOrder', 'published', 'createdAt', 'updatedAt']) &&
+                       incoming().keys().hasOnly(['nameEn', 'nameHi', 'nameBn', 'iconKey', 'sortOrder', 'published', 'createdAt', 'updatedAt']) &&
+                       isValidCategory(incoming());
+      allow update: if isAdmin() && isValidId(categoryId) &&
+                       incoming().createdAt == existing().createdAt &&
+                       isValidCategory(incoming()) &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['nameEn', 'nameHi', 'nameBn', 'iconKey', 'sortOrder', 'published', 'updatedAt']);
+      allow delete: if isAdmin() && isValidId(categoryId);
+    }
+
+    match /manufacturers/{manufacturerId} {
+      allow get: if isSignedIn() && isValidId(manufacturerId) && (existing().published == true || isAdmin());
+      allow list: if isSignedIn() && (existing().published == true || isAdmin());
+      allow create: if isAdmin() && isValidId(manufacturerId) &&
+                       incoming().keys().hasAll(['name', 'country', 'published', 'createdAt', 'updatedAt']) &&
+                       incoming().keys().hasOnly(['name', 'country', 'licenseInfo', 'published', 'createdAt', 'updatedAt']) &&
+                       isValidManufacturer(incoming());
+      allow update: if isAdmin() && isValidId(manufacturerId) &&
+                       incoming().createdAt == existing().createdAt &&
+                       isValidManufacturer(incoming()) &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['name', 'country', 'licenseInfo', 'published', 'updatedAt']);
+      allow delete: if isAdmin() && isValidId(manufacturerId);
+    }
+
+    match /translations/{translationId} {
+      allow get: if isSignedIn() && isValidId(translationId) && (existing().published == true || isAdmin());
+      allow list: if isSignedIn() && (existing().published == true || isAdmin());
+      allow create: if isAdmin() && isValidId(translationId) &&
+                       incoming().keys().hasAll(['key', 'en', 'hi', 'bn', 'published', 'createdAt', 'updatedAt']) &&
+                       incoming().keys().hasOnly(['key', 'en', 'hi', 'bn', 'published', 'createdAt', 'updatedAt']) &&
+                       isValidTranslation(incoming());
+      allow update: if isAdmin() && isValidId(translationId) &&
+                       incoming().createdAt == existing().createdAt &&
+                       isValidTranslation(incoming()) &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['key', 'en', 'hi', 'bn', 'published', 'updatedAt']);
+      allow delete: if isAdmin() && isValidId(translationId);
+    }
+
+    // 5. Admin-Only Collections
+    match /apiConnections/{connectionId} {
+      allow get: if isAdmin() && isValidId(connectionId);
+      allow list: if isAdmin();
+      allow create: if isAdmin() && isValidId(connectionId) &&
+                       incoming().keys().hasAll(['name', 'baseUrl', 'providerType', 'active', 'createdAt', 'updatedAt']) &&
+                       incoming().keys().hasOnly(['name', 'baseUrl', 'providerType', 'active', 'statusMessage', 'createdAt', 'updatedAt']) &&
+                       isValidApiConnection(incoming());
+      allow update: if isAdmin() && isValidId(connectionId) &&
+                       incoming().createdAt == existing().createdAt &&
+                       isValidApiConnection(incoming()) &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['name', 'baseUrl', 'providerType', 'active', 'statusMessage', 'updatedAt']);
+      allow delete: if isAdmin() && isValidId(connectionId);
+    }
+
+    match /admins/{adminUid} {
+      allow get: if isSignedIn() && isValidId(adminUid) && (request.auth.uid == adminUid || isAdmin());
+      allow list, create, update, delete: if isAdmin();
+    }
+
+    // 6. User-Isolated Profile & Subcollections
+    match /users/{userId} {
+      allow get: if isSignedIn() && isValidId(userId) && (request.auth.uid == userId || isAdmin());
+      allow list: if isAdmin();
+      allow create: if isOwner(userId) && isValidId(userId) &&
+                       incoming().userId == request.auth.uid &&
+                       incoming().keys().hasAll(['userId', 'displayName', 'preferredLanguage', 'themeMode', 'onboardingCompleted', 'createdAt', 'updatedAt']) &&
+                       incoming().keys().hasOnly(['userId', 'displayName', 'email', 'preferredLanguage', 'themeMode', 'onboardingCompleted', 'createdAt', 'updatedAt']) &&
+                       isValidUserProfile(incoming());
+      allow update: if isOwner(userId) && isValidId(userId) &&
+                       incoming().userId == existing().userId &&
+                       incoming().createdAt == existing().createdAt &&
+                       isValidUserProfile(incoming()) &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'email', 'preferredLanguage', 'themeMode', 'onboardingCompleted', 'updatedAt']);
+      allow delete: if isOwner(userId) && isValidId(userId);
+
+      match /favorites/{medicineId} {
+        allow get: if isOwner(userId) && isValidId(medicineId);
+        allow list: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidId(medicineId) &&
+                         incoming().userId == request.auth.uid &&
+                         incoming().medicineId == medicineId &&
+                         incoming().keys().hasAll(['userId', 'medicineId', 'medicineName', 'genericName', 'categoryId', 'createdAt']) &&
+                         incoming().keys().hasOnly(['userId', 'medicineId', 'medicineName', 'genericName', 'categoryId', 'createdAt']) &&
+                         isValidFavorite(incoming());
+        allow update: if false;
+        allow delete: if isOwner(userId) && isValidId(medicineId);
+      }
+
+      match /recentlyViewed/{medicineId} {
+        allow get: if isOwner(userId) && isValidId(medicineId);
+        allow list: if isOwner(userId);
+        allow create, update: if isOwner(userId) && isValidId(medicineId) &&
+                                 incoming().userId == request.auth.uid &&
+                                 incoming().medicineId == medicineId &&
+                                 incoming().keys().hasAll(['userId', 'medicineId', 'medicineName', 'viewedAt']) &&
+                                 incoming().keys().hasOnly(['userId', 'medicineId', 'medicineName', 'viewedAt']) &&
+                                 isValidRecentlyViewed(incoming());
+        allow delete: if isOwner(userId) && isValidId(medicineId);
+      }
+
+      match /searchHistory/{historyId} {
+        allow get: if isOwner(userId) && isValidId(historyId);
+        allow list: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidId(historyId) &&
+                         incoming().userId == request.auth.uid &&
+                         incoming().keys().hasAll(['userId', 'query', 'searchType', 'searchedAt']) &&
+                         incoming().keys().hasOnly(['userId', 'query', 'searchType', 'searchedAt']) &&
+                         isValidSearchHistory(incoming());
+        allow update: if false;
+        allow delete: if isOwner(userId) && isValidId(historyId);
+      }
+
+      match /reminders/{reminderId} {
+        allow get: if isOwner(userId) && isValidId(reminderId);
+        allow list: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidId(reminderId) &&
+                         incoming().userId == request.auth.uid &&
+                         incoming().keys().hasAll(['userId', 'medicineId', 'medicineName', 'dosage', 'scheduleSlot', 'timeHour', 'timeMinute', 'active', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['userId', 'medicineId', 'medicineName', 'dosage', 'scheduleSlot', 'timeHour', 'timeMinute', 'instructions', 'active', 'createdAt', 'updatedAt']) &&
+                         isValidReminder(incoming());
+        allow update: if isOwner(userId) && isValidId(reminderId) &&
+                         incoming().userId == existing().userId &&
+                         incoming().createdAt == existing().createdAt &&
+                         isValidReminder(incoming()) &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['medicineId', 'medicineName', 'dosage', 'scheduleSlot', 'timeHour', 'timeMinute', 'instructions', 'active', 'updatedAt']);
+        allow delete: if isOwner(userId) && isValidId(reminderId);
+      }
+    }
+
+    // 7. Telemetry Analytics Events (Authenticated create own events, Admin read/list)
+    match /analyticsEvents/{eventId} {
+      allow get: if isAdmin() && isValidId(eventId);
+      allow list: if isAdmin();
+      allow create: if isSignedIn() && isValidId(eventId) &&
+                       incoming().userId == request.auth.uid &&
+                       incoming().keys().hasAll(['userId', 'eventType', 'targetId', 'createdAt']) &&
+                       incoming().keys().hasOnly(['userId', 'eventType', 'targetId', 'createdAt']) &&
+                       isValidAnalyticsEvent(incoming());
+      allow update, delete: if false;
+    }
+  }
+}
